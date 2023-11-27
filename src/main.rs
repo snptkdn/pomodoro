@@ -52,7 +52,7 @@ impl Iterator for SinSignal {
     // }
     fn next(&mut self) -> Option<Self::Item> {
         let adjusted_x = self.x - WINDOW_SIZE as f64; // x から 3600 を減算して調整
-        let point = if self.x < WINDOW_SIZE as f64 {
+        let point = if self.x < 0.0 {
             (self.x, 0.0)
         } else {
             (self.x, (adjusted_x * 2.0 * std::f64::consts::PI / self.period).sin() * self.scale)
