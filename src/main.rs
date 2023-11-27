@@ -101,7 +101,7 @@ impl App {
         for _ in 0..1 {
             self.data3.remove(0);
         }
-        self.data3.extend(self.signal2.by_ref().take(1));
+        self.data3.extend(self.signal3.by_ref().take(1));
         self.window[0] += 1.0;
         self.window[1] += 1.0;
     }
