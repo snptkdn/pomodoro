@@ -50,7 +50,7 @@ impl Iterator for SinSignal {
     // }
     fn next(&mut self) -> Option<Self::Item> {
         let adjusted_x = self.x - 3600.0; // x から 3600 を減算して調整
-        let point = if self.x < 0.0 {
+        let point = if self.x < 3600.0 {
             (self.x, 0.0)
         } else {
             (self.x, (adjusted_x / self.period).sin() * self.scale)
