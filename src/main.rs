@@ -113,7 +113,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     let mut terminal = Terminal::new(backend)?;
 
     // create app and run it
-    let tick_rate = Duration::from_millis(50);
+    let tick_rate = Duration::from_millis(10);
     let app = App::new();
     let res = run_app(&mut terminal, app, tick_rate);
 
@@ -154,6 +154,9 @@ fn run_app<B: Backend>(
         }
         if last_tick.elapsed() >= tick_rate {
             app.on_tick();
+            if app.window[1] == 3600.0 {
+                app = App::new();
+            }
             last_tick = Instant::now();
         }
     }
