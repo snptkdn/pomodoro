@@ -65,20 +65,26 @@ struct App {
     data1: Vec<(f64, f64)>,
     signal2: SinSignal,
     data2: Vec<(f64, f64)>,
+    signal3: SinSignal,
+    data3: Vec<(f64, f64)>,
     window: [f64; 2],
 }
 
 impl App {
     fn new() -> App {
-        let mut signal1 = SinSignal::new(1.0, 37.5*5.0, 18.0); // 25min
-        let mut signal2 = SinSignal::new(1.0, 37.5, 10.0); // 30min
+        let mut signal1 = SinSignal::new(1.0, 37.5, 18.0); // 5min
+        let mut signal2 = SinSignal::new(1.0, 37.5*5.0, 10.0); // 25min
+        let mut signal3 = SinSignal::new(1.0, 37.5*6.0, 10.0); // 30min
         let data1 = signal1.by_ref().take(3600).collect::<Vec<(f64, f64)>>();
         let data2 = signal2.by_ref().take(3600).collect::<Vec<(f64, f64)>>();
+        let data3 = signal3.by_ref().take(3600).collect::<Vec<(f64, f64)>>();
         App {
             signal1,
             data1,
             signal2,
             data2,
+            signal3,
+            data3,
             window: [0.0, 3600.0],
         }
     }
@@ -92,6 +98,10 @@ impl App {
             self.data2.remove(0);
         }
         self.data2.extend(self.signal2.by_ref().take(1));
+        for _ in 0..1 {
+            self.data3.remove(0);
+        }
+        self.data3.extend(self.signal2.by_ref().take(1));
         self.window[0] += 1.0;
         self.window[1] += 1.0;
     }
@@ -176,15 +186,20 @@ fn ui<B: Backend>(f: &mut Frame, app: &App) {
     ];
     let datasets = vec![
         Dataset::default()
-            .name("data2")
-            .marker(symbols::Marker::Dot)
+            .name("Break")
+            .marker(symbols::Marker::Braille)
             .style(Style::default().fg(Color::Cyan))
             .data(&app.data1),
         Dataset::default()
-            .name("data3")
+            .name("Work")
+            .marker(symbols::Marker::Braille)
+            .style(Style::default().fg(Color::Red))
+            .data(&app.data2),
+        Dataset::default()
+            .name("Lunch")
             .marker(symbols::Marker::Braille)
             .style(Style::default().fg(Color::Yellow))
-            .data(&app.data2),
+            .data(&app.data3),
     ];
 
     let chart = Chart::new(datasets)
