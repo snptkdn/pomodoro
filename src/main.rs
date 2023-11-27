@@ -18,6 +18,8 @@ use std::{
     time::{Duration, Instant},
 };
 
+const WINDOW_SIZE: usize = 1800;
+
 #[derive(Clone)]
 pub struct SinSignal {
     x: f64,
@@ -49,11 +51,11 @@ impl Iterator for SinSignal {
     //     Some(point)
     // }
     fn next(&mut self) -> Option<Self::Item> {
-        let adjusted_x = self.x - 3600.0; // x から 3600 を減算して調整
-        let point = if self.x < 3600.0 {
+        let adjusted_x = self.x - WINDOW_SIZE as f64; // x から 3600 を減算して調整
+        let point = if self.x < WINDOW_SIZE as f64 {
             (self.x, 0.0)
         } else {
-            (self.x, (adjusted_x / self.period).sin() * self.scale)
+            (self.x, (adjusted_x * 2.0 * std::f64::consts::PI / self.period).sin() * self.scale)
         };
         self.x += self.interval;
         Some(point)
@@ -72,13 +74,13 @@ struct App {
 
 impl App {
     fn new() -> App {
-        let five_minutes = 50.0;
-        let mut signal1 = SinSignal::new(1.0, five_minutes, 18.0); // 5min
-        let mut signal2 = SinSignal::new(1.0, five_minutes * 5.0, 10.0); // 25min
-        let mut signal3 = SinSignal::new(1.0, five_minutes * 6.0, 10.0); // 30min
-        let data1 = signal1.by_ref().take(3600).collect::<Vec<(f64, f64)>>();
-        let data2 = signal2.by_ref().take(3600).collect::<Vec<(f64, f64)>>();
-        let data3 = signal3.by_ref().take(3600).collect::<Vec<(f64, f64)>>();
+        let one_minutes = 60.0;
+        let mut signal1 = SinSignal::new(1.0, one_minutes*5.0, 18.0); // 5min
+        let mut signal2 = SinSignal::new(1.0, one_minutes * 25.0, 15.0); // 25min
+        let mut signal3 = SinSignal::new(1.0, one_minutes * 30.0, 10.0); // 30min
+        let data1 = signal1.by_ref().take(WINDOW_SIZE).collect::<Vec<(f64, f64)>>();
+        let data2 = signal2.by_ref().take(WINDOW_SIZE).collect::<Vec<(f64, f64)>>();
+        let data3 = signal3.by_ref().take(WINDOW_SIZE).collect::<Vec<(f64, f64)>>();
         App {
             signal1,
             data1,
@@ -86,7 +88,7 @@ impl App {
             data2,
             signal3,
             data3,
-            window: [0.0, 3600.0],
+            window: [0.0, WINDOW_SIZE as f64],
         }
     }
 
