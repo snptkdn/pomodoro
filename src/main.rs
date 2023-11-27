@@ -3,11 +3,6 @@ use crossterm::{
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
-use std::{
-    error::Error,
-    io,
-    time::{Duration, Instant},
-};
 use ratatui::{
     backend::{Backend, CrosstermBackend},
     layout::{Constraint, Direction, Layout},
@@ -16,6 +11,11 @@ use ratatui::{
     text::Span,
     widgets::{Axis, Block, Borders, Chart, Dataset},
     Frame, Terminal,
+};
+use std::{
+    error::Error,
+    io,
+    time::{Duration, Instant},
 };
 
 #[derive(Clone)]
@@ -72,9 +72,10 @@ struct App {
 
 impl App {
     fn new() -> App {
-        let mut signal1 = SinSignal::new(1.0, 37.5, 18.0); // 5min
-        let mut signal2 = SinSignal::new(1.0, 37.5*5.0, 10.0); // 25min
-        let mut signal3 = SinSignal::new(1.0, 37.5*6.0, 10.0); // 30min
+        let five_minutes = 50.0;
+        let mut signal1 = SinSignal::new(1.0, five_minutes, 18.0); // 5min
+        let mut signal2 = SinSignal::new(1.0, five_minutes * 5.0, 10.0); // 25min
+        let mut signal3 = SinSignal::new(1.0, five_minutes * 6.0, 10.0); // 30min
         let data1 = signal1.by_ref().take(3600).collect::<Vec<(f64, f64)>>();
         let data2 = signal2.by_ref().take(3600).collect::<Vec<(f64, f64)>>();
         let data3 = signal3.by_ref().take(3600).collect::<Vec<(f64, f64)>>();
@@ -90,17 +91,11 @@ impl App {
     }
 
     fn on_tick(&mut self) {
-        for _ in 0..1 {
-            self.data1.remove(0);
-        }
+        self.data1.remove(0);
         self.data1.extend(self.signal1.by_ref().take(1));
-        for _ in 0..1 {
-            self.data2.remove(0);
-        }
+        self.data2.remove(0);
         self.data2.extend(self.signal2.by_ref().take(1));
-        for _ in 0..1 {
-            self.data3.remove(0);
-        }
+        self.data3.remove(0);
         self.data3.extend(self.signal3.by_ref().take(1));
         self.window[0] += 1.0;
         self.window[1] += 1.0;
@@ -116,7 +111,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     let mut terminal = Terminal::new(backend)?;
 
     // create app and run it
-    let tick_rate = Duration::from_millis(1000);
+    let tick_rate = Duration::from_millis(50);
     let app = App::new();
     let res = run_app(&mut terminal, app, tick_rate);
 
@@ -166,12 +161,7 @@ fn ui<B: Backend>(f: &mut Frame, app: &App) {
     let size = f.size();
     let chunks = Layout::default()
         .direction(Direction::Vertical)
-        .constraints(
-            [
-                Constraint::Ratio(1, 1),
-            ]
-            .as_ref(),
-        )
+        .constraints([Constraint::Ratio(1, 1)].as_ref())
         .split(size);
     let x_labels = vec![
         Span::styled(
@@ -180,7 +170,11 @@ fn ui<B: Backend>(f: &mut Frame, app: &App) {
         ),
         Span::raw(format!("Pomodoro")),
         Span::styled(
-            format!("{:0>2}:{}", (app.window[1]%1800.0/60.0).floor(), (app.window[1]%60.0).floor()),
+            format!(
+                "{:0>2}:{}",
+                (app.window[1] % 1800.0 / 60.0).floor(),
+                (app.window[1] % 60.0).floor()
+            ),
             Style::default().add_modifier(Modifier::BOLD),
         ),
     ];
@@ -203,9 +197,7 @@ fn ui<B: Backend>(f: &mut Frame, app: &App) {
     ];
 
     let chart = Chart::new(datasets)
-        .block(
-            Block::default()
-        )
+        .block(Block::default())
         .x_axis(
             Axis::default()
                 .style(Style::default().fg(Color::Gray))
