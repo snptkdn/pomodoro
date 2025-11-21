@@ -8,24 +8,22 @@ mod presentation;
 use crate::{
     application::app::App,
     event::event_loop::run_app,
-    infrastructure::terminal::{restore_terminal, setup_terminal},
+    infrastructure::terminal::{CrosstermTerminalHandler, TerminalHandler},
 };
-use std::{error::Error, time::Duration};
+use std::{error::Error, io, time::Duration};
 
 fn main() -> Result<(), Box<dyn Error>> {
-    // setup terminal
-    let mut terminal = setup_terminal()?;
-
-    // create app and run it
-    let tick_rate = Duration::from_millis(1000);
-    let app = App::new();
-    let res = run_app(&mut terminal, app, tick_rate);
-
-    // restore terminal
-    restore_terminal(&mut terminal)?;
+    let mut handler = CrosstermTerminalHandler::new(io::stdout());
+    let res = handler.run(|terminal| {
+        let tick_rate = Duration::from_millis(1000);
+        let app = App::new();
+        run_app(terminal, app, tick_rate)
+    });
 
     if let Err(err) = res {
-        println!("{:?}", err)
+        // Since the terminal is restored by the handler, we can safely print the error.
+        println!("Error: {:?}", err);
+        return Err(Box::new(err));
     }
 
     Ok(())

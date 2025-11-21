@@ -4,25 +4,51 @@ use crossterm::{
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
-use ratatui::{backend::CrosstermBackend, Terminal};
+use ratatui::{backend::{Backend, CrosstermBackend}, Terminal};
 use std::io;
 
-pub fn setup_terminal() -> Result<Terminal<CrosstermBackend<io::Stdout>>, io::Error> {
-    enable_raw_mode()?;
-    let mut stdout = io::stdout();
-    execute!(stdout, EnterAlternateScreen, EnableMouseCapture)?;
-    let backend = CrosstermBackend::new(stdout);
-    Terminal::new(backend)
+pub trait TerminalHandler<'a> {
+    type B: Backend;
+    fn run<F>(&'a mut self, app_logic: F) -> Result<(), io::Error>
+    where
+        F: FnOnce(&mut Terminal<Self::B>) -> Result<(), io::Error>;
 }
 
-pub fn restore_terminal(
-    terminal: &mut Terminal<CrosstermBackend<io::Stdout>>,
-) -> Result<(), io::Error> {
-    disable_raw_mode()?;
-    execute!(
-        terminal.backend_mut(),
-        LeaveAlternateScreen,
-        DisableMouseCapture
-    )?;
-    terminal.show_cursor()
+pub struct CrosstermTerminalHandler<W: io::Write> {
+    writer: W,
+}
+
+impl<W: io::Write> CrosstermTerminalHandler<W> {
+    pub fn new(writer: W) -> Self {
+        Self { writer }
+    }
+}
+
+impl<'a, W: io::Write + 'a> TerminalHandler<'a> for CrosstermTerminalHandler<W> {
+    type B = CrosstermBackend<&'a mut W>;
+
+    fn run<F>(&'a mut self, app_logic: F) -> Result<(), io::Error>
+    where
+        F: FnOnce(&mut Terminal<Self::B>) -> Result<(), io::Error>,
+    {
+        // Setup terminal
+        enable_raw_mode()?;
+        execute!(&mut self.writer, EnterAlternateScreen, EnableMouseCapture)?;
+        let backend = CrosstermBackend::new(&mut self.writer);
+        let mut terminal = Terminal::new(backend)?;
+
+        // Run application logic
+        let res = app_logic(&mut terminal);
+
+        // Restore terminal
+        disable_raw_mode()?;
+        execute!(
+            terminal.backend_mut(),
+            LeaveAlternateScreen,
+            DisableMouseCapture
+        )?;
+        terminal.show_cursor()?;
+
+        res
+    }
 }
