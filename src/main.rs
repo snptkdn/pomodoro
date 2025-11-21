@@ -9,7 +9,7 @@ use ratatui::{
     style::{Color, Modifier, Style},
     symbols,
     text::Span,
-    widgets::{Axis, Block, Borders, Chart, Dataset},
+    widgets::{Axis, Block, Chart, Dataset, GraphType},
     Frame, Terminal,
 };
 use std::{
@@ -70,6 +70,7 @@ struct App {
     signal3: SinSignal,
     data3: Vec<(f64, f64)>,
     window: [f64; 2],
+    y_bounds: [f64; 2],
 }
 
 impl App {
@@ -89,6 +90,7 @@ impl App {
             signal3,
             data3,
             window: [0.0, WINDOW_SIZE as f64],
+            y_bounds: [-20.0, 20.0],
         }
     }
 
@@ -183,7 +185,7 @@ fn ui<B: Backend>(f: &mut Frame, app: &App) {
             Style::default().add_modifier(Modifier::BOLD),
         ),
     ];
-    let datasets = vec![
+    let sin_datasets = vec![
         Dataset::default()
             .name("Break")
             .marker(symbols::Marker::Braille)
@@ -201,6 +203,25 @@ fn ui<B: Backend>(f: &mut Frame, app: &App) {
             .data(&app.data3),
     ];
 
+    let periods = [
+        (app.signal1.period, Color::Cyan),
+        (app.signal2.period, Color::Red),
+        (app.signal3.period, Color::Yellow),
+    ];
+    let vertical_lines_data =
+        generate_vertical_lines_data(app.window, app.y_bounds, &periods);
+    let line_datasets: Vec<Dataset> = vertical_lines_data
+        .iter()
+        .map(|(data, color)| {
+            Dataset::default()
+                .graph_type(GraphType::Line)
+                .style(Style::default().fg(*color).add_modifier(Modifier::BOLD))
+                .data(data)
+        })
+        .collect();
+
+    let datasets = [sin_datasets, line_datasets].concat();
+
     let chart = Chart::new(datasets)
         .block(Block::default())
         .x_axis(
@@ -212,7 +233,70 @@ fn ui<B: Backend>(f: &mut Frame, app: &App) {
         .y_axis(
             Axis::default()
                 .style(Style::default().fg(Color::Gray))
-                .bounds([-20.0, 20.0]),
+                .bounds(app.y_bounds),
         );
     f.render_widget(chart, chunks[0]);
+}
+
+fn generate_vertical_lines_data(
+    window: [f64; 2],
+    y_bounds: [f64; 2],
+    periods: &[(f64, Color)],
+) -> Vec<(Vec<(f64, f64)>, Color)> {
+    let mut vertical_lines_data_with_color = Vec::new();
+    for (period, color) in periods.iter() {
+        if *period == 0.0 {
+            continue;
+        }
+        let start_k = (window[0] / period).ceil() as i32;
+        let end_k = (window[1] / period).floor() as i32;
+        for k in start_k..=end_k {
+            let x = k as f64 * period;
+            vertical_lines_data_with_color.push((vec![(x, y_bounds[0]), (x, y_bounds[1])], *color));
+        }
+    }
+    vertical_lines_data_with_color
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_sin_signal() {
+        let mut signal = SinSignal::new(1.0, 360.0, 10.0);
+        let first_point = signal.next().unwrap();
+        assert_eq!(first_point.0, 0.0);
+        assert!((first_point.1 - 0.0).abs() < 1e-9);
+
+        // We subtract WINDOW_SIZE in the implementation, so we need to account for that.
+        let x = 90.0;
+        let adjusted_x = x - WINDOW_SIZE as f64;
+        let expected_y = (adjusted_x * 2.0 * std::f64::consts::PI / 360.0).sin() * 10.0;
+
+        let point_90 = signal.by_ref().skip(89).next().unwrap();
+        assert_eq!(point_90.0, 90.0);
+        assert!((point_90.1 - expected_y).abs() < 1e-9);
+    }
+
+    #[test]
+    fn test_generate_vertical_lines_data() {
+        let window = [0.0, 1000.0];
+        let y_bounds = [-10.0, 10.0];
+        let periods = [(300.0, Color::Cyan), (600.0, Color::Red), (900.0, Color::Yellow)];
+        let data = generate_vertical_lines_data(window, y_bounds, &periods);
+        assert_eq!(data.len(), 4 + 2 + 2); // 4 for signal1, 2 for signal2, 2 for signal3
+    }
+
+    #[test]
+    fn test_app_new() {
+        let app = App::new();
+        assert_eq!(app.window[0], 0.0);
+        assert_eq!(app.window[1], WINDOW_SIZE as f64);
+        assert_eq!(app.y_bounds[0], -20.0);
+        assert_eq!(app.y_bounds[1], 20.0);
+        assert_eq!(app.data1.len(), WINDOW_SIZE);
+        assert_eq!(app.data2.len(), WINDOW_SIZE);
+        assert_eq!(app.data3.len(), WINDOW_SIZE);
+    }
 }
