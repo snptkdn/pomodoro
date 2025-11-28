@@ -17,7 +17,7 @@ pub fn ui<B: Backend>(f: &mut Frame, app: &App) {
         .constraints([Constraint::Ratio(1, 1)].as_ref())
         .split(size);
 
-    let (phase_name, phase_color) = match app.pomodoro.phase {
+    let (phase_name, _phase_color) = match app.pomodoro.phase {
         PomodoroPhase::Work => ("Work", Color::Red),
         PomodoroPhase::ShortBreak => ("Break", Color::Cyan),
         PomodoroPhase::LongBreak => ("Lunch", Color::Yellow),
@@ -25,7 +25,7 @@ pub fn ui<B: Backend>(f: &mut Frame, app: &App) {
 
     let x_labels = vec![
         Span::styled(
-            format!("{}", app.signal.x),
+            format!("{}", app.signal1.x),
             Style::default().add_modifier(Modifier::BOLD),
         ),
         Span::raw(format!("Pomodoro - {}", phase_name)),
@@ -41,10 +41,32 @@ pub fn ui<B: Backend>(f: &mut Frame, app: &App) {
 
     let datasets = vec![
         Dataset::default()
-            .name(phase_name)
+            .name("Break")
             .marker(symbols::Marker::Braille)
-            .style(Style::default().fg(phase_color))
-            .data(&app.data),
+            .style(if app.pomodoro.phase == PomodoroPhase::ShortBreak {
+                Style::default().fg(Color::Cyan)
+            } else {
+                Style::default().fg(Color::DarkGray)
+            })
+            .data(&app.data1),
+        Dataset::default()
+            .name("Work")
+            .marker(symbols::Marker::Braille)
+            .style(if app.pomodoro.phase == PomodoroPhase::Work {
+                Style::default().fg(Color::Red)
+            } else {
+                Style::default().fg(Color::DarkGray)
+            })
+            .data(&app.data2),
+        Dataset::default()
+            .name("Lunch")
+            .marker(symbols::Marker::Braille)
+            .style(if app.pomodoro.phase == PomodoroPhase::LongBreak {
+                Style::default().fg(Color::Yellow)
+            } else {
+                Style::default().fg(Color::DarkGray)
+            })
+            .data(&app.data3),
         Dataset::default()
             .name("Cycle End")
             .marker(symbols::Marker::Dot)
